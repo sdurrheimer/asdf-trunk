@@ -10,11 +10,22 @@ source "${plugin_dir}/lib/utils.bash"
 
 mkdir -p "$ASDF_DOWNLOAD_PATH"
 
-# TODO: Adapt this to proper extension and adapt extracting strategy.
-release_file="$ASDF_DOWNLOAD_PATH/$TOOL_NAME-$ASDF_INSTALL_VERSION.tar.gz"
+KERNEL=$(uname | tr "[:upper:]" "[:lower:]")
+if [[ ${KERNEL} == mingw64* || ${KERNEL} == msys* ]]; then
+  KERNEL="mingw"
+fi
+
+MACHINE=$(uname -m)
+if [[ $MACHINE == "aarch64" ]]; then
+  MACHINE="arm64";
+fi
+
+check_platform $KERNEL $MACHINE
+
+release_file="$ASDF_DOWNLOAD_PATH/$TOOL_NAME-$ASDF_INSTALL_VERSION-$KERNEL-$MACHINE.tar.gz"
 
 # Download tar.gz file to the download directory
-download_release "$ASDF_INSTALL_VERSION" "$release_file"
+download_release "$ASDF_INSTALL_VERSION" "$release_file" "$KERNEL" "$MACHINE"
 
 #  Extract contents of tar.gz file into the download directory
 tar -xzf "$release_file" -C "$ASDF_DOWNLOAD_PATH" --strip-components=1 || fail "Could not extract $release_file"

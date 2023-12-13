@@ -2,10 +2,13 @@
 
 set -euo pipefail
 
-# TODO: Ensure this is the correct GitHub homepage where releases can be downloaded for trunk.
 GH_REPO="https://github.com/trunk-io"
 TOOL_NAME="trunk"
 TOOL_TEST="trunk --version"
+
+DOWNLOAD_URL="https://trunk.io/releases"
+LATEST_FILE="https://trunk.io/releases/latest"
+MINIMUM_MACOS_VERSION="10.15"
 
 fail() {
 	echo -e "asdf-$TOOL_NAME: $*"
@@ -14,35 +17,28 @@ fail() {
 
 curl_opts=(-fsSL)
 
-# NOTE: You might want to remove this if trunk is not hosted on GitHub releases.
-if [ -n "${GITHUB_API_TOKEN:-}" ]; then
-	curl_opts=("${curl_opts[@]}" -H "Authorization: token $GITHUB_API_TOKEN")
-fi
+lawk() {
+  awk 'BEGIN{ORS="";}{gsub(/\r/, "", $0)}'"${1}" "${@:2}"
+}
 
 sort_versions() {
 	sed 'h; s/[+-]/./g; s/.p\([[:digit:]]\)/.z\1/; s/$/.z/; G; s/\n/ /' |
 		LC_ALL=C sort -t. -k 1,1 -k 2,2n -k 3,3n -k 4,4n -k 5,5n | awk '{print $2}'
 }
 
-list_github_tags() {
-	git ls-remote --tags --refs "$GH_REPO" |
-		grep -o 'refs/tags/.*' | cut -d/ -f3- |
-		sed 's/^v//' # NOTE: You might want to adapt this sed to remove non-version strings from tags
-}
-
 list_all_versions() {
-	# TODO: Adapt this. By default we simply list the tag names from GitHub releases.
-	# Change this function if trunk has other means of determining installable versions.
-	list_github_tags
+	# Trunk.io doesn't allow to list all available versions, but here is the latest one
+	curl "${curl_opts[@]}" -X GET "${LATEST_FILE}" | lawk '/version:/{print $2; exit;}'
 }
 
 download_release() {
-	local version filename url
+	local version filename os arch url
 	version="$1"
 	filename="$2"
+	os="$3"
+	arch="$4"
 
-	# TODO: Adapt the release URL convention for trunk
-	url="$GH_REPO/archive/v${version}.tar.gz"
+	url="$DOWNLOAD_URL/${version}/trunk-${version}-${os}-${arch}.tar.gz"
 
 	echo "* Downloading $TOOL_NAME release $version..."
 	curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
@@ -61,7 +57,6 @@ install_version() {
 		mkdir -p "$install_path"
 		cp -r "$ASDF_DOWNLOAD_PATH"/* "$install_path"
 
-		# TODO: Assert trunk executable exists.
 		local tool_cmd
 		tool_cmd="$(echo "$TOOL_TEST" | cut -d' ' -f1)"
 		test -x "$install_path/$tool_cmd" || fail "Expected $install_path/$tool_cmd to be executable."
@@ -71,4 +66,36 @@ install_version() {
 		rm -rf "$install_path"
 		fail "An error occurred while installing $TOOL_NAME $version."
 	)
+}
+
+check_darwin_version() {
+  local osx_version
+  osx_version="$(sw_vers -productVersion)"
+
+  # trunk-ignore-begin(shellcheck/SC2312): the == will fail if anything inside the $() fails
+  if [[ "$(printf "%s\n%s\n" "${MINIMUM_MACOS_VERSION}" "${osx_version}" |
+    sort --version-sort |
+    head -n 1)" == "${MINIMUM_MACOS_VERSION}"* ]]; then
+    return
+  fi
+  # trunk-ignore-end(shellcheck/SC2312)
+
+  fail "Trunk requires at least MacOS ${MINIMUM_MACOS_VERSION}" \
+    "(yours is ${osx_version}). See https://docs.trunk.io for more info."
+}
+
+check_platform() {
+	local os arch platform
+	os="$1"
+	arch="$2"
+	platform="$os-$arch"
+
+	if [[ ${platform} == "darwin-x86_64" || ${platform} == "darwin-arm64" ]]; then
+		check_darwin_version
+	elif [[ ${platform} == "linux-x86_64" || ${platform} == "linux-arm64" || ${platform} == "windows-x86_64" || ${platform} == "mingw-x86_64" ]]; then
+	  :
+	else
+	  fail "Trunk is only supported on Linux (x64_64, arm64), MacOS (x86_64, arm64), and Windows (x86_64)." \
+	    "See https://docs.trunk.io for more info."
+	fi
 }
