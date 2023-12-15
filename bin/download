@@ -12,15 +12,15 @@ mkdir -p "$ASDF_DOWNLOAD_PATH"
 
 KERNEL=$(uname | tr "[:upper:]" "[:lower:]")
 if [[ ${KERNEL} == mingw64* || ${KERNEL} == msys* ]]; then
-  KERNEL="mingw"
+	KERNEL="mingw"
 fi
 
 MACHINE=$(uname -m)
 if [[ $MACHINE == "aarch64" ]]; then
-  MACHINE="arm64";
+	MACHINE="arm64"
 fi
 
-check_platform $KERNEL $MACHINE
+check_platform "$KERNEL" "$MACHINE"
 
 release_file="$ASDF_DOWNLOAD_PATH/$TOOL_NAME-$ASDF_INSTALL_VERSION-$KERNEL-$MACHINE.tar.gz"
 

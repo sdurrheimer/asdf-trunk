@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-GH_REPO="https://github.com/trunk-io"
 TOOL_NAME="trunk"
 TOOL_TEST="trunk --version"
 
@@ -18,7 +17,7 @@ fail() {
 curl_opts=(-fsSL)
 
 lawk() {
-  awk 'BEGIN{ORS="";}{gsub(/\r/, "", $0)}'"${1}" "${@:2}"
+	awk 'BEGIN{ORS="";}{gsub(/\r/, "", $0)}'"${1}" "${@:2}"
 }
 
 sort_versions() {
@@ -69,19 +68,19 @@ install_version() {
 }
 
 check_darwin_version() {
-  local osx_version
-  osx_version="$(sw_vers -productVersion)"
+	local osx_version
+	osx_version="$(sw_vers -productVersion)"
 
-  # trunk-ignore-begin(shellcheck/SC2312): the == will fail if anything inside the $() fails
-  if [[ "$(printf "%s\n%s\n" "${MINIMUM_MACOS_VERSION}" "${osx_version}" |
-    sort --version-sort |
-    head -n 1)" == "${MINIMUM_MACOS_VERSION}"* ]]; then
-    return
-  fi
-  # trunk-ignore-end(shellcheck/SC2312)
+	# trunk-ignore-begin(shellcheck/SC2312): the == will fail if anything inside the $() fails
+	if [[ "$(printf "%s\n%s\n" "${MINIMUM_MACOS_VERSION}" "${osx_version}" |
+		sort --version-sort |
+		head -n 1)" == "${MINIMUM_MACOS_VERSION}"* ]]; then
+		return
+	fi
+	# trunk-ignore-end(shellcheck/SC2312)
 
-  fail "Trunk requires at least MacOS ${MINIMUM_MACOS_VERSION}" \
-    "(yours is ${osx_version}). See https://docs.trunk.io for more info."
+	fail "Trunk requires at least MacOS ${MINIMUM_MACOS_VERSION}" \
+		"(yours is ${osx_version}). See https://docs.trunk.io for more info."
 }
 
 check_platform() {
@@ -93,9 +92,9 @@ check_platform() {
 	if [[ ${platform} == "darwin-x86_64" || ${platform} == "darwin-arm64" ]]; then
 		check_darwin_version
 	elif [[ ${platform} == "linux-x86_64" || ${platform} == "linux-arm64" || ${platform} == "windows-x86_64" || ${platform} == "mingw-x86_64" ]]; then
-	  :
+		:
 	else
-	  fail "Trunk is only supported on Linux (x64_64, arm64), MacOS (x86_64, arm64), and Windows (x86_64)." \
-	    "See https://docs.trunk.io for more info."
+		fail "Trunk is only supported on Linux (x64_64, arm64), MacOS (x86_64, arm64), and Windows (x86_64)." \
+			"See https://docs.trunk.io for more info."
 	fi
 }
